@@ -1,5 +1,5 @@
 # RCON_CS
-A simple Python script to run RCON command for Counter-Strike 1.6 dedicated server.
+A simple CLI created in Python to run RCON commands for Counter-Strike 1.6 dedicated servers.
 
 ## Compile from Source (Windows)
 1. Install Python - https://www.python.org/downloads
