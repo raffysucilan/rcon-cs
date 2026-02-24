@@ -16,7 +16,7 @@ def get_challenge(sock, ip, port):
             return match.group(1)
 
     except ConnectionResetError:
-        print("Connection Reset - Wrong IP/Port/Password or server unreachable.")
+        print("Connection Reset - Wrong IP/Port or server unreachable.")
         return None
 
     except socket.timeout:
@@ -25,16 +25,8 @@ def get_challenge(sock, ip, port):
 
     return None
 
-def send_rcon(ip, port, password, command):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(3)
 
-    challenge = get_challenge(sock, ip, port)
-
-    if not challenge:
-        print("Failed to get challenge.")
-        return
-
+def send_command(sock, ip, port, password, challenge, command):
     packet = (
         b"\xFF\xFF\xFF\xFFrcon "
         + challenge.encode()
@@ -50,13 +42,57 @@ def send_rcon(ip, port, password, command):
     try:
         while True:
             data, _ = sock.recvfrom(4096)
-            print(data[5:].decode(errors="ignore"))
+            print(data[5:].decode(errors="ignore"), end="")
     except socket.timeout:
         pass
     except ConnectionResetError:
-        pass
+        print("Connection lost.")
+
+
+def interactive_rcon(ip, port, password):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(2)
+
+    challenge = get_challenge(sock, ip, port)
+    if not challenge:
+        print("Failed to get challenge.")
+        return
+
+    print(f"Connected to {ip}:{port}")
+    print("Type commands. Type ':q' to close.\n")
+
+    while True:
+        try:
+            command = input("rcon_cs > ").strip()
+
+            if not command:
+                continue
+
+            if command.lower() in (":q"):
+                break
+
+            send_command(sock, ip, port, password, challenge, command)
+
+        except KeyboardInterrupt:
+            break
 
     sock.close()
+    print("Disconnected.")
+
+
+def single_command(ip, port, password, command):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(2)
+
+    challenge = get_challenge(sock, ip, port)
+    if not challenge:
+        print("Failed to get challenge.")
+        sock.close()
+        return
+
+    send_command(sock, ip, port, password, challenge, command)
+    sock.close()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Counter-Strike 1.6 RCON CLI")
@@ -64,10 +100,13 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--ip", required=True, help="IP address")
     parser.add_argument("-p", "--port", required=True, type=int, help="Port")
     parser.add_argument("-a", "--password", required=True, help="Password")
-    parser.add_argument("command", nargs="+", help="Command to execute")
+    parser.add_argument("command", nargs="*", help="Command to execute")
 
     args = parser.parse_args()
-
-    command_str = " ".join(args.command)
-
-    send_rcon(args.ip, args.port, args.password, command_str)
+    if args.command:
+        # Standalone mode
+        command_str = " ".join(args.command)
+        single_command(args.ip, args.port, args.password, command_str)
+    else:
+        # Interactive mode
+        interactive_rcon(args.ip, args.port, args.password)
