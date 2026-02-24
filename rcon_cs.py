@@ -61,7 +61,7 @@ def send_rcon(ip, port, password, command):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Counter-Strike 1.6 RCON Client")
+    parser = argparse.ArgumentParser(description="Counter-Strike 1.6 RCON CLI")
 
     parser.add_argument("-i", "--ip", required=True, help="IP address")
     parser.add_argument("-p", "--port", required=True, type=int, help="Port")
