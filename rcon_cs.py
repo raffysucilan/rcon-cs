@@ -1,64 +1,75 @@
 import socket
-import sys
 import re
-import configparser
+import argparse
 
-CS_CONFIG = configparser.ConfigParser()
-CS_CONFIG.read("rcon_cs-config.ini")
-
-SERVER_IP = CS_CONFIG.get("RCON", "IPAddress")
-SERVER_PORT = CS_CONFIG.getint("RCON", "Port")
-RCON_PASSWORD = CS_CONFIG.get("RCON", "Password")
-
-def get_challenge(sock):
+def get_challenge(sock, ip, port):
     packet = b"\xFF\xFF\xFF\xFFchallenge rcon\n"
-    sock.sendto(packet, (SERVER_IP, SERVER_PORT))
 
     try:
+        sock.sendto(packet, (ip, port))
         data, _ = sock.recvfrom(4096)
-        text = data[4:].decode(errors="ignore")
 
+        text = data[4:].decode(errors="ignore")
         match = re.search(r"challenge rcon (\d+)", text)
+
         if match:
             return match.group(1)
+
+    except ConnectionResetError:
+        print("Connection reset - wrong IP/port or server unreachable")
+        return None
+
     except socket.timeout:
-        pass
+        print("Timeout - no response from server")
+        return None
 
     return None
 
-def send_rcon(command):
+
+def send_rcon(ip, port, password, command):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(3)
 
-    challenge = get_challenge(sock)
+    challenge = get_challenge(sock, ip, port)
+
     if not challenge:
-        print("Failed to get RCON challenge")
+        print("Failed to get challenge")
         return
 
     packet = (
         b"\xFF\xFF\xFF\xFFrcon "
         + challenge.encode()
         + b" "
-        + RCON_PASSWORD.encode()
+        + password.encode()
         + b" "
         + command.encode()
         + b"\n"
     )
 
-    sock.sendto(packet, (SERVER_IP, SERVER_PORT))
+    sock.sendto(packet, (ip, port))
 
     try:
         while True:
             data, _ = sock.recvfrom(4096)
-            print(data[4:].decode(errors="ignore"))
+            print(data[5:].decode(errors="ignore"))
     except socket.timeout:
+        pass
+    except ConnectionResetError:
         pass
 
     sock.close()
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python rcon_cs.py <command>")
-        sys.exit(1)
 
-    send_rcon(" ".join(sys.argv[1:]))
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Count-Strike 1.6 RCON Client")
+
+    parser.add_argument("-i", "--ip", required=True, help="IP address")
+    parser.add_argument("-p", "--port", required=True, type=int, help="Port")
+    parser.add_argument("-a", "--password", required=True, help="Password")
+    parser.add_argument("command", nargs="+", help="Command to execute")
+
+    args = parser.parse_args()
+
+    command_str = " ".join(args.command)
+
+    send_rcon(args.ip, args.port, args.password, command_str)

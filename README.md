@@ -5,6 +5,3 @@ Simple Python script to run RCON command for Counter-Strike 1.6 dedicated server
 `pip install pyinstaller`
 
 `pyinstaller --onefile rcon_cs.py`
-
-## Config
-Place `rcon_cs-config.ini` file in the same directory.
