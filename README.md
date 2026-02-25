@@ -12,9 +12,9 @@ This is a sample command to get the server status.
 
 ### Persistent Mode
 Persistent mode allows the connection to stay open as long as the window is alive.  
-When the connection is open, only the actual commands are required by the CLI.
+While the connection is open, only the actual commands are required by the CLI.
 
-This is a sample .bat that will open a persistent window.
+This is a sample `.bat` that will open a persistent window.
 ```
 @echo off
 
